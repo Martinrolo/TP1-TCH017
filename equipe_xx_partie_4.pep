@@ -94,7 +94,7 @@ CHARO            '\n',i
 CHARO            '\n',i
 
 
-;Calculer adresses de départ des chiffres de la base de données
+;Boucle principale
 FOR:             LDA iter,d
                  CPA nb_val,d 
                  BRGT ENDFOR ;Si l'itération est égale à nb_val, on arrête
@@ -106,11 +106,36 @@ FOR:             LDA iter,d
                  DECO adresse,d
                  CHARO '\n',i
 
-                 ;Afficher 2 parties de chaque chiffre
+                 ;Afficher 1ere partie de chaque chiffre
                  STRO msgpar1,d
                  DECO adresse,n
                  CHARO '\n',i
 
+                 ;Extraire signe                
+                 LDBYTEA adresse,n
+                 ASRA ;Faire 7 décalages pour avoir dernier bit
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 STA signe,d ;On la stocke, pour l'afficher après la 2e partie du chiffre
+
+
+                 ;Extraire exposant
+                 LDA adresse,n ;Prendre les bits de la 1ere partie
+                 ANDA masque,d ;Et binaire pour avoir juste les bits de l'exposant
+                 ASRA ;Faire 7 décalages pour avoir la valeur de l'exposant
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 ASRA
+                 STA expos,d ;On le stocke, on va l'afficher après le signe plus loin
+     
+                 ;Afficher la 2e partie de chaque chiffre
                  LDA adresse,d
                  ADDA mot,d ;Incrémenter adresse de 1 mot (+2 octets) pour avoir la 2e partie
                  STA adresse,d
@@ -118,9 +143,28 @@ FOR:             LDA iter,d
                  STRO msgpar2,d
                  DECO adresse,n
                  CHARO '\n',i
+
+                 ;Afficher le signe
+                 STRO msgsigne,d
+                 DECO signe,d
                  CHARO '\n',i
 
-                 ;Incrémentation des valeurs
+                 ;Afficher l'exposant
+                 STRO msgexpos,d
+                 DECO expos,d
+                 CHARO '\n',i
+
+                 ;Calculer + afficher la puissance
+                 LDA expos,d
+                 SUBA BIAIS,i
+                 STA puiss,d
+
+                 STRO msgpuiss,d
+                 DECO puiss,d
+                 CHARO '\n',i
+                 CHARO '\n',i
+
+                 ;Incrémentation des valeurs iter et adresse
                  LDA iter,d
                  ADDA 1,i
                  STA iter,d
@@ -132,11 +176,6 @@ FOR:             LDA iter,d
                  BR FOR
 
 ENDFOR:          BR FIN 
-
-
-
-
-
 
 FIN:     STOP
 
@@ -161,8 +200,24 @@ msgadd2:         .ASCII " @ \x00"
 ;Tâche 1.4
 partie1:         .WORD 0
 partie2:         .WORD 0
-msgpar1:         .ASCII "    Partie 1 : \x00"
-msgpar2:         .ASCII "    Partie 2 : \x00"
+msgpar1:         .ASCII "    Partie 1  : \x00"
+msgpar2:         .ASCII "    Partie 2  : \x00"
+
+;Tâche 2.1
+signe:           .WORD 0
+temp:            .WORD 0
+msgsigne:        .ASCII "    Signe     : \x00"
+
+;Tâche 2.2
+iter_exp:        .WORD 1
+expos:           .WORD 0
+masque:          .WORD 0x7F80 ;Correspond à 0 11111111 00000000 
+msgexpos:        .ASCII "    Exposant  : \x00"
+
+;Tâche 2.3
+BIAIS:           .EQUATE 127
+puiss:           .WORD 0
+msgpuiss:        .ASCII "    Puissance : \x00" 
 
 .END
 
