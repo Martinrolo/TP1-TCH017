@@ -134,10 +134,62 @@ FOR:             LDA iter,d
                  ASRA
                  ASRA
                  STA expos,d ;On le stocke, on va l'afficher après le signe plus loin
+
+                 ;Calculer la puissance
+                 LDA expos,d
+                 SUBA BIAIS,i
+                 STA puiss,d
+
+                 ;
+                 ; Calculer la partie entière
+                 ;
+                 ;Aller à l'adresse du 2e octet
+                 LDA adresse,d
+                 ADDA 1,i
+                 STA adresse,d            
+                 
+                 LDA adresse,n    ;Saisir le 2e octet de la 1ere partie + 1er octet de la 2e partie
+                 ASLA             ;Le 1er chiffre du 2e octet fait partie de l'exposant, donc on l'enlève
+                 STA bytes23,d
+
+                 ;Boucle extraire bits
+                 FORINT:          LDA     iter_int,d
+                                  CPA     puiss,d     ;On arrête de boucler quand on a tous les bits
+                                  BREQ    ENDFINT
+                                  
+                                  LDA     iter_int,d
+                                  ADDA    1,i         ;itérer
+                                  STA     iter_int,d
+
+                                  LDA     bytes23,d   ;Charger les bytes 2 et 3 du chiffre
+                                  ASLA
+                                  STA     bytes23,d
+                                  BRC     ADD1        ;s'il y a une retenue, ça veut dire qu'on a un bit = 1
+
+                                  LDA     entier,d
+                                  ASLA                ;Décaler les autres bits vers la gauche (si le bit = 0)
+                                  STA     entier,d
+
+                                  BR      FORINT      ;On recommence la boucle
+
+                 ADD1:            LDA     entier,d
+                                  ASLA                ;Décaler les bits vers la gauche
+                                  ADDA    1,d         ;Ajouter bit = 1
+                                  STA     entier,d
+
+                                  BR      FORINT
+                                  
+                 ENDFINT:         LDA     0,i
+                                  STA     iter_int,d      ;Remettre itération à 0 pour les prochaines boucles
+                               
+                                  
+                 
+
+
      
                  ;Afficher la 2e partie de chaque chiffre
                  LDA adresse,d
-                 ADDA mot,d ;Incrémenter adresse de 1 mot (+2 octets) pour avoir la 2e partie
+                 ADDA 1,d ;Incrémenter adresse de 1 mot (+2 octets) pour avoir la 2e partie
                  STA adresse,d
 
                  STRO msgpar2,d
@@ -154,15 +206,20 @@ FOR:             LDA iter,d
                  DECO expos,d
                  CHARO '\n',i
 
-                 ;Calculer + afficher la puissance
-                 LDA expos,d
-                 SUBA BIAIS,i
-                 STA puiss,d
-
+                 ;Afficher la puissance
                  STRO msgpuiss,d
                  DECO puiss,d
                  CHARO '\n',i
+
+                 ;Afficher la partie entière
+                 STRO msgint,d
+                 DECO entier,d
                  CHARO '\n',i
+                 CHARO '\n',i
+
+                 ;Remettre entier = 1 (bit activé) pour les prochaines boucles
+                 LDA     1,i
+                 STA     entier,d
 
                  ;Incrémentation des valeurs iter et adresse
                  LDA iter,d
@@ -200,24 +257,31 @@ msgadd2:         .ASCII " @ \x00"
 ;Tâche 1.4
 partie1:         .WORD 0
 partie2:         .WORD 0
-msgpar1:         .ASCII "    Partie 1  : \x00"
-msgpar2:         .ASCII "    Partie 2  : \x00"
+msgpar1:         .ASCII "    Partie 1       : \x00"
+msgpar2:         .ASCII "    Partie 2       : \x00"
 
 ;Tâche 2.1
 signe:           .WORD 0
 temp:            .WORD 0
-msgsigne:        .ASCII "    Signe     : \x00"
+msgsigne:        .ASCII "    Signe          : \x00"
 
 ;Tâche 2.2
 iter_exp:        .WORD 1
 expos:           .WORD 0
 masque:          .WORD 0x7F80 ;Correspond à 0 11111111 00000000 
-msgexpos:        .ASCII "    Exposant  : \x00"
+msgexpos:        .ASCII "    Exposant       : \x00"
 
 ;Tâche 2.3
 BIAIS:           .EQUATE 127
 puiss:           .WORD 0
-msgpuiss:        .ASCII "    Puissance : \x00" 
+msgpuiss:        .ASCII "    Puissance      : \x00" 
+
+;Tâche 3.1
+entier:          .WORD 1     ;Bit activé de la mantisse
+iter_int:        .WORD 0
+bytes23:         .WORD 0
+msgint:          .ASCII "    Partie entière : \x00"
+
 
 .END
 
