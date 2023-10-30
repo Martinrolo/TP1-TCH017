@@ -140,9 +140,7 @@ FOR:             LDA iter,d
                  SUBA BIAIS,i
                  STA puiss,d
 
-                 ;
                  ; Calculer la partie entière
-                 ;
                  ;Aller à l'adresse du 2e octet
                  LDA adresse,d
                  ADDA 1,i
@@ -183,8 +181,32 @@ FOR:             LDA iter,d
                                   STA     iter_int,d      ;Remettre itération à 0 pour les prochaines boucles
                                
                                   
-                 
+                 ;Trouver nombre de bits pour la décimale dans la 1ere partie
+                 LDA 16,i
+                 SUBA 1,i
+                 SUBA 8,i
+                 SUBA puiss,d
+                 STA nbbits1,d
 
+
+                 ;Boucle calcul
+                 FORDEC:          LDA     iter_dec,d
+                                  CPA     10,i        ;Si on a 10 chiffres de la mantisse, on arrête
+                                  BREQ    ENDFDEC
+                                  
+                                  LDA     iter_dec,d
+                                  ADDA    1,d         ;itérer
+                                  STA     iter_dec,d
+                                  
+                                  ;Choisir l'adresse
+                                  LDA nbbits1,d
+                                  BRLT
+
+
+                 ENDFDEC:         
+
+                 
+         
 
      
                  ;Afficher la 2e partie de chaque chiffre
@@ -281,6 +303,13 @@ entier:          .WORD 1     ;Bit activé de la mantisse
 iter_int:        .WORD 0
 bytes23:         .WORD 0
 msgint:          .ASCII "    Partie entière : \x00"
+
+;Tâche 4.1
+numer:           .WORD 0
+denom:           .WORD 0
+iter_dec:        .WORD 0
+nbbits1:         .WORD 0
+
 
 
 .END
