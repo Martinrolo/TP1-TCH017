@@ -179,41 +179,162 @@ FOR:             LDA iter,d
                                   
                  ENDFINT:         LDA     0,i
                                   STA     iter_int,d      ;Remettre itération à 0 pour les prochaines boucles
-                               
-                                  
+                                  LDA     0,i
+                                  STA     bytes23,d       ;Remettre à 0 pour réutiliser pour partie décimale
+                          
+
+                 ;     
+                 ;  DÉBUT EXTRACTION PARTIE DÉCIMALE
+                 ;
+               
                  ;Trouver nombre de bits pour la décimale dans la 1ere partie
                  LDA 16,i
                  SUBA 1,i
                  SUBA 8,i
                  SUBA puiss,d
                  STA nbbits1,d
+                                                                                                                                        
 
-
-                 ;Boucle calcul
-                 FORDEC:          LDA     iter_dec,d
-                                  CPA     10,i        ;Si on a 10 chiffres de la mantisse, on arrête
-                                  BREQ    ENDFDEC
+                 ;Vérifier si on a des bits dans la 1ere partie
+                 IFBIT1:          LDA     nbbits1,d
+                                  CPA     0,i
+                                  BRGT    FORMASK     ;Si on a des bits dans la 1ere partie, on va faire le masque
                                   
-                                  LDA     iter_dec,d
-                                  ADDA    1,d         ;itérer
-                                  STA     iter_dec,d
-                                  
-                                  ;Choisir l'adresse
-                                  LDA nbbits1,d
-                                  BRLT
+                                  ;Sinon, on a pas de bits, donc aller direct à la partie 2
+                                  LDA     adresse,d
+                                  ADDA    1,i
+                                  STA     adresse,d  ;On change l'adresse pour aller au mot 2
 
+                                  LDA adresse,n    ;Saisir le 2e mot                         
+                                  STA bytes34,d    ;Mettre dans une nouvelle variable
 
-                 ENDFDEC:         
+                                  BR      FORINT2    ;On va à la partie 2 directement
 
+                 ;Créer masque pour isoler bits partie 1:
+                 FORMASK:         LDA     itermask,d
+                                  CPA     nbbits1,d
+                                  BREQ    ENDFORMK    ;Si on a fini le masque pour le nb de bits
+
+                                  ADDA    1,i
+                                  STA     itermask,d  ;itérer
+
+                                  LDBYTEA maskpt1,d 
+                                  ASLA                ;Décaler les valeurs du masque vers la gauche
+                                  ADDA    1,i
+                                  STBYTEA maskpt1,d
+
+                                  BR      FORMASK
+
+                 ENDFORMK:        NOP     0,i
+
+                 ;Appliquer masque pour avoir bits de la partie 1
+                 LDBYTEA          adresse,n   ;Adresse byte 2 partie 1
+                 ANDA             maskpt1,d
+                 STA              decimale,d  ;stocker les bits car ils sont les premiers de la partie décimale
                  
-         
+                 ;Vu que nous avons déjà certains bits de nos 10 bits de la partie entière, on incrémente l'itération
+                 LDA              iter_dec,d
+                 ADDA             nbbits1,d
+                 STA              iter_dec,d
+
+                 ;On peut déjà changer l'adresse pour prendre le mot de la partie 2
+                 LDA              adresse,d
+                 ADDA             1,i
+                 STA              adresse,d  
+
+                 LDA adresse,n    ;Saisir le 2e mot                         
+                 STA bytes34,d    ;Mettre dans une nouvelle variable
+                 
+                 BR FORPART2      ;Pas besoin de supprimer d'entier, on passe direct à la part2
+
+
+                 ;Supprimer les bits qui font partie de l'entier
+                 FORINT2:         LDA     iterint2,d 
+                                  CPA     nbbits1,d 
+                                  BREQ    FORPART2    ;Si c'est égal, on a supprimé tous les bits de l'entier
+
+                                  SUBA    1,i         ;Vu que nbbits1 va être négatif, on décrémente dans la boucle
+                                  STA     iterint2,d    
+
+                                  LDA     bytes34,d   ;Prendre le mot
+                                  ASLA                ;Décalage à gauche pour supprimer valeur
+                                  STA     bytes34,d   
+
+                                  BR      FORINT2      ;On recommence la boucle
+
+                 ;trouver les bits de la décimale dans la partie 2
+                 FORPART2:        LDA     iter_dec,d 
+                                  CPA     10,d        ;Si on a itéré 10, on a toute la partie décimale
+                                  BREQ    ENDFORP2    ;Si on les a tous extrait, on a fini d'extraire la decimale
+
+                                  ADDA    1,i         ;Itérer
+                                  STA     iter_dec,d
+
+                                  LDA     bytes34,d   ;Aller à l'adresse qui est toujours égale au byte 2 de part 1
+                                  ASLA
+                                  STA     bytes23,d
+                                  BRC     ADD1_DEC    ;S'il y a une retenue, le bit est activé donc on l'ajoute 
+
+                                  ;Sinon, ça veut dire que le bit est un 0, donc on décale sans rien ajouter
+                                  LDA     decimale,d
+                                  ASLA                ;Décaler les autres bits vers la gauche (si le bit = 0)
+                                  STA     decimale,d
+
+                                  BR      FORPART2      ;On recommence la boucle
+
+                 ADD1_DEC:        LDA     decimale,d
+                                  ASLA                ;Décaler les bits vers la gauche
+                                  ADDA    1,d         ;Ajouter bit = 1
+                                  STA     decimale,d
+
+                                  BR      FORPART2
+
+                 ENDFORP2:        LDA     0,i
+                                  STA     iter_dec,d
+
+                 ;     
+                 ;  DÉBUT CALCUL PARTIE DÉCIMALE
+                 ;
+               
+                 FORDECI:         LDA     iter_dec,d
+                                  CPA     10,d
+                                  BREQ    ENDFORDC    ;finir boucle
+
+                                  ADDA    1,i
+                                  STA     iter_dec,d  ;Itérer
+
+                                  LDA     decimale,d
+                                  ASLA
+                                  BRC     DECOUI      ;Ça veut dire qu'il y a un bit actif
+
+                                  ;sinon on fait juste multiplier numer et denom par 2
+                                  LDA     numer,d
+                                  ASLA                ;multiplie par 2
+                                  STA     numer,d 
+
+                                  LDA     denom,d
+                                  ASLA                ;multiplie par 2
+                                  STA     denom,d 
+
+                                  BR      FORDECI
+                 
+                 DECOUI:          LDA     numer,d
+                                  ASLA                ;multiplie par 2
+                                  ADDA    1,i
+                                  STA     numer,d    
+
+                                  LDA     denom,d
+                                  ASLA                ;multiplie par 2
+                                  STA     denom,d 
+
+                                  BR      FORDECI  
+
+                                  
+
+                 ENDFORDC:        LDA     0,i                             
 
      
                  ;Afficher la 2e partie de chaque chiffre
-                 LDA adresse,d
-                 ADDA 1,d ;Incrémenter adresse de 1 mot (+2 octets) pour avoir la 2e partie
-                 STA adresse,d
-
                  STRO msgpar2,d
                  DECO adresse,n
                  CHARO '\n',i
@@ -237,11 +358,34 @@ FOR:             LDA iter,d
                  STRO msgint,d
                  DECO entier,d
                  CHARO '\n',i
+
+                 ;Afficher numérateur
+                 STRO msgnumer,d
+                 DECO numer,d
+                 CHARO '\n',i
+
+                 ;Afficher dénominateur
+                 STRO msgdenom,d
+                 DECO denom,d
+                 CHARO '\n',i
                  CHARO '\n',i
 
                  ;Remettre entier = 1 (bit activé) pour les prochaines boucles
                  LDA     1,i
                  STA     entier,d
+
+                 ;Tout remettre à zero
+                 LDA     0,i
+                 STA     decimale,d
+                 STA     nbbits1,d         
+                 STA     maskpt1,d         
+                 STA     itermask,d        
+                 STA     iter_dec,d        
+                 STA     iterint2,d
+                 STA     bytes34,d
+                 STA     numer,d
+                 LDA     1,i
+                 STA     denom,d
 
                  ;Incrémentation des valeurs iter et adresse
                  LDA iter,d
@@ -306,9 +450,16 @@ msgint:          .ASCII "    Partie entière : \x00"
 
 ;Tâche 4.1
 numer:           .WORD 0
-denom:           .WORD 0
-iter_dec:        .WORD 0
+denom:           .WORD 1
+decimale:        .WORD 0
 nbbits1:         .WORD 0
+maskpt1:         .BYTE 0
+itermask:        .WORD 0
+iter_dec:        .WORD 0
+iterint2:        .WORD 0
+bytes34:         .WORD 0
+msgnumer:        .ASCII "    Numérateur     : \x00"
+msgdenom:        .ASCII "    Dénominateur   : \x00"
 
 
 
