@@ -140,7 +140,9 @@ FOR:             LDA iter,d
                  SUBA BIAIS,i
                  STA puiss,d
 
-                 ; Calculer la partie entière
+                 ; 
+                 ;Calculer la partie entière
+                 ;
                  ;Aller à l'adresse du 2e octet
                  LDA adresse,d
                  ADDA 1,i
@@ -152,7 +154,7 @@ FOR:             LDA iter,d
 
                  ;Boucle extraire bits
                  FORINT:          LDA     iter_int,d
-                                  CPA     puiss,d     ;On arrête de boucler quand on a tous les bits
+                                  CPA     puiss,d     ;On arrête de boucler quand on a tous les bits de puissance
                                   BREQ    ENDFINT
                                   
                                   LDA     iter_int,d
@@ -179,8 +181,6 @@ FOR:             LDA iter,d
                                   
                  ENDFINT:         LDA     0,i
                                   STA     iter_int,d      ;Remettre itération à 0 pour les prochaines boucles
-                                  LDA     0,i
-                                  STA     bytes23,d       ;Remettre à 0 pour réutiliser pour partie décimale
                           
 
                  ;     
@@ -218,10 +218,10 @@ FOR:             LDA iter,d
                                   ADDA    1,i
                                   STA     itermask,d  ;itérer
 
-                                  LDBYTEA maskpt1,d 
+                                  LDA maskpt1,d 
                                   ASLA                ;Décaler les valeurs du masque vers la gauche
                                   ADDA    1,i
-                                  STBYTEA maskpt1,d
+                                  STA maskpt1,d
 
                                   BR      FORMASK
 
@@ -264,7 +264,7 @@ FOR:             LDA iter,d
 
                  ;trouver les bits de la décimale dans la partie 2
                  FORPART2:        LDA     iter_dec,d 
-                                  CPA     10,d        ;Si on a itéré 10, on a toute la partie décimale
+                                  CPA     10,i        ;Si on a itéré 10, on a toute la partie décimale
                                   BREQ    ENDFORP2    ;Si on les a tous extrait, on a fini d'extraire la decimale
 
                                   ADDA    1,i         ;Itérer
@@ -272,7 +272,7 @@ FOR:             LDA iter,d
 
                                   LDA     bytes34,d   ;Aller à l'adresse qui est toujours égale au byte 2 de part 1
                                   ASLA
-                                  STA     bytes23,d
+                                  STA     bytes34,d
                                   BRC     ADD1_DEC    ;S'il y a une retenue, le bit est activé donc on l'ajoute 
 
                                   ;Sinon, ça veut dire que le bit est un 0, donc on décale sans rien ajouter
@@ -289,23 +289,22 @@ FOR:             LDA iter,d
 
                                   BR      FORPART2
 
-                 ENDFORP2:        LDA     0,i
+                 ENDFORP2:        LDA     decimale,d
+                                  STA     numer,d     ;on stock le résultat dans la variable numer, les bits sont
+                                                      ;déjà bien placés (j'ai fait les +1 pour le numerateur)
+                                  LDA     0,i
                                   STA     iter_dec,d
 
                  ;     
-                 ;  DÉBUT CALCUL PARTIE DÉCIMALE
+                 ; CALCUL PARTIE DÉCIMALE
                  ;
                
                  FORDECI:         LDA     iter_dec,d
-                                  CPA     10,d
+                                  CPA     10,i
                                   BREQ    ENDFORDC    ;finir boucle
 
                                   ADDA    1,i
                                   STA     iter_dec,d  ;Itérer
-
-                                  LDA     decimale,d
-                                  ASLA
-                                  BRC     DECOUI      ;Ça veut dire qu'il y a un bit actif
 
                                   ;sinon on fait juste multiplier numer et denom par 2
                                   LDA     numer,d
@@ -317,20 +316,7 @@ FOR:             LDA iter,d
                                   STA     denom,d 
 
                                   BR      FORDECI
-                 
-                 DECOUI:          LDA     numer,d
-                                  ASLA                ;multiplie par 2
-                                  ADDA    1,i
-                                  STA     numer,d    
-
-                                  LDA     denom,d
-                                  ASLA                ;multiplie par 2
-                                  STA     denom,d 
-
-                                  BR      FORDECI  
-
-                                  
-
+                            
                  ENDFORDC:        LDA     0,i                             
 
      
@@ -361,7 +347,7 @@ FOR:             LDA iter,d
 
                  ;Afficher numérateur
                  STRO msgnumer,d
-                 DECO numer,d
+                 DECO decimale,d
                  CHARO '\n',i
 
                  ;Afficher dénominateur
@@ -453,7 +439,7 @@ numer:           .WORD 0
 denom:           .WORD 1
 decimale:        .WORD 0
 nbbits1:         .WORD 0
-maskpt1:         .BYTE 0
+maskpt1:         .WORD 0
 itermask:        .WORD 0
 iter_dec:        .WORD 0
 iterint2:        .WORD 0
